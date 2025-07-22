@@ -1,0 +1,69 @@
+# plot_daily_bar_chart
+
+
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import matplotlib.ticker as ticker
+import pandas as pd
+
+def plot_daily_bar_chart(df, date_column='Date', consumption_column='Consumption', return_fig=False):
+    if df is None:
+        print("DataFrame is empty. Please upload a file.")
+        return
+
+    if date_column not in df.columns or consumption_column not in df.columns:
+        print("Column names not found.")
+        print("Available columns:", df.columns)
+        return
+
+    # Convert to datetime and sort
+    df[date_column] = pd.to_datetime(df[date_column])
+    df = df.sort_values(by=date_column)
+
+    # ---- Filter only one month (last 30 days) ----
+    last_day = df[date_column].max()
+    first_day = last_day - pd.DateOffset(days=30)
+    df = df[(df[date_column] >= first_day) & (df[date_column] <= last_day)]
+
+    # Daily sum of consumption
+    df_daily = df.resample('D', on=date_column)[consumption_column].sum().reset_index()
+
+    fig, ax = plt.subplots(figsize=(20, 8))
+
+    bars = ax.bar(df_daily[date_column], df_daily[consumption_column],
+                   color='lightseagreen', edgecolor='black', width=0.7, label='Daily Consumption')
+
+    max_val = df_daily[consumption_column].max()
+    top_margin = max_val * 0.1
+
+    # Value labels on top of each bar
+    for bar in bars:
+        height = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width() / 2, height + top_margin * 0.02,
+                 f'{int(height):,}', ha='center', va='bottom', fontsize=9, rotation=45, color='darkgreen')
+
+    # Titles and axis labels
+    ax.set_title("Daily Electricity Consumption (Last 30 Days)", fontsize=18, fontweight='bold')
+    ax.set_xlabel("Date", fontsize=14)
+    ax.set_ylabel("Consumption (kWh)", fontsize=14)
+
+    ax.set_ylim(0, max_val + top_margin)
+
+    # Show each day on the x-axis
+    ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%d %b'))
+
+    plt.setp(ax.get_xticklabels(), rotation=45, ha='right', fontsize=10)
+
+    ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: format(int(x), ',')))
+
+    ax.grid(True, linestyle='--', alpha=0.5, axis='y')
+
+    ax.legend(loc='upper left', fontsize=12, frameon=True, shadow=True)
+
+    plt.tight_layout()
+
+    if return_fig:
+        return fig
+    else:
+        plt.show()
