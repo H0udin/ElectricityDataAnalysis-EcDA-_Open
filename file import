@@ -1,0 +1,34 @@
+# import file and read file
+# after create upload button this button opens file page
+
+from IPython.display import display
+import pandas as pd
+import io
+import ipywidgets as widgets
+
+# File upload widget
+upload_widget = widgets.FileUpload(
+    accept='.csv',      # Accept only .csv files
+    multiple=False      # Single file only
+)
+
+# Display the widget
+display(upload_widget)
+
+# Read the uploaded file (supports both dict and tuple format)
+def read_uploaded_file(file_widget):
+    if not file_widget.value:
+        print("Please select a file.")
+        return None
+    
+    try:
+        # If value is a dict
+        info = list(file_widget.value.values())[0]
+    except AttributeError:
+        # If value is a tuple/list
+        info = file_widget.value[0]
+
+    content = info['content']
+    df = pd.read_csv(io.BytesIO(content), encoding='utf-8')
+    print("File successfully loaded.")
+    return df
