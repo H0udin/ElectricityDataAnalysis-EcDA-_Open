@@ -1,0 +1,68 @@
+# plot_daily_bill_chart
+
+
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import matplotlib.ticker as ticker
+
+def plot_daily_bill_chart(df, date_column='Date', consumption_column='Consumption', price_per_kwh=0.11, return_fig=False):
+    if df is None:
+        print("DataFrame is empty. Please upload a file.")
+        return
+
+    if date_column not in df.columns or consumption_column not in df.columns:
+        print("Column names not found.")
+        print("Available columns:", df.columns)
+        return
+
+    # Convert and sort
+    df[date_column] = pd.to_datetime(df[date_column])
+    df = df.sort_values(by=date_column)
+
+    # Filter for last 30 days
+    last_day = df[date_column].max()
+    first_day = last_day - pd.DateOffset(days=30)
+    df = df[(df[date_column] >= first_day) & (df[date_column] <= last_day)]
+
+    # Calculate daily bill
+    df['DailyBill'] = df[consumption_column] * price_per_kwh
+    total_bill = df['DailyBill'].sum()
+
+    # Plotting
+    fig, ax = plt.subplots(figsize=(20, 8))
+    bars = ax.bar(df[date_column], df['DailyBill'],
+                  color='mediumseagreen', edgecolor='black', width=0.7, label='Daily Bill (AZN)')
+
+    # Dynamically adjust upper limit
+    max_height = df['DailyBill'].max()
+    ax.set_ylim(0, max_height * 1.25)  # Add 25% headroom
+
+    # Add value labels above bars
+    for i, bar in enumerate(bars):
+        height = bar.get_height()
+        label = f"{df['DailyBill'].iloc[i]:.2f} AZN"
+        ax.text(bar.get_x() + bar.get_width() / 2, height + max_height * 0.03,
+                label, ha='center', va='bottom', fontsize=9, rotation=45, color='darkblue')
+
+    # Axis and title
+    ax.set_title("Daily Electricity Bill (Last 30 Days)", fontsize=18, fontweight='bold')
+    ax.set_xlabel("Date", fontsize=14)
+    ax.set_ylabel("Bill (AZN)", fontsize=14)
+    ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%d %b'))
+    ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: f"{x:.0f} AZN"))
+
+    plt.setp(ax.get_xticklabels(), rotation=45, ha='right', fontsize=9)
+    ax.grid(True, linestyle='--', alpha=0.5, axis='y')
+    ax.legend(loc='upper left', fontsize=12)
+
+    # TOTAL BILL text under the plot
+    fig.text(0.5, 0.01, f"Total Electricity Bill for the Period: {total_bill:.2f} AZN",
+             ha='center', fontsize=14, fontweight='bold', color='darkred')
+
+    plt.tight_layout(rect=[0, 0.05, 1, 1])  # leave room at bottom for text
+
+    if return_fig:
+        return fig
+    else:
+        plt.show()
