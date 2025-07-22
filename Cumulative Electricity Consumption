@@ -1,0 +1,59 @@
+# plot_cumulative_chart
+
+
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import matplotlib.ticker as ticker
+import pandas as pd
+
+def plot_cumulative_chart(df, date_column='Date', consumption_column='Consumption', return_fig=False):
+    if df is None:
+        print("Veri çerçevesi boş. Lütfen önce dosya yükleyin.")
+        return
+
+    if date_column not in df.columns or consumption_column not in df.columns:
+        print("Kolon isimleri bulunamadı.")
+        print("Var olan kolonlar:", df.columns)
+        return
+
+    # Tarih tipine çevir ve sırala
+    df[date_column] = pd.to_datetime(df[date_column])
+    df = df.sort_values(by=date_column)
+
+    # Son 30 günü filtrele
+    last_day = df[date_column].max()
+    first_day = last_day - pd.DateOffset(days=30)
+    df = df[(df[date_column] >= first_day) & (df[date_column] <= last_day)]
+
+    # Günlük toplam ve kümülatif toplam
+    df_daily = df.resample('D', on=date_column)[consumption_column].sum().reset_index()
+    df_daily['Cumulative'] = df_daily[consumption_column].cumsum()
+
+    # Grafik çizimi
+    fig, ax = plt.subplots(figsize=(20, 8))
+
+    ax.plot(df_daily[date_column], df_daily['Cumulative'],
+            color='mediumblue', linewidth=2.5, marker='o', label='Cumulative Consumption')
+
+    # Değerleri yaz
+    for i, row in df_daily.iterrows():
+        ax.text(row[date_column], row['Cumulative'] + df_daily['Cumulative'].max()*0.01,
+                f'{int(row["Cumulative"]):,}', ha='center', fontsize=8, rotation=45, color='blue')
+
+    ax.set_title("Cumulative Electricity Consumption (Last 30 Days)", fontsize=18, fontweight='bold')
+    ax.set_xlabel("Date", fontsize=14)
+    ax.set_ylabel("Cumulative Consumption (kWh)", fontsize=14)
+
+    ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%d %b'))
+    ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: format(int(x), ',')))
+
+    plt.setp(ax.get_xticklabels(), rotation=45, ha='right', fontsize=10)
+    ax.grid(True, linestyle='--', alpha=0.5)
+    ax.legend(loc='upper left', fontsize=12)
+    plt.tight_layout()
+
+    if return_fig:
+        return fig
+    else:
+        plt.show()
