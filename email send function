@@ -1,0 +1,69 @@
+# read file
+df = read_uploaded_file(upload_widget)
+
+if df is not None:
+    # show graphics
+    plot_daily_bar_chart(df)
+    plot_cumulative_chart(df, date_column='Date', consumption_column='Consumption')
+    plot_daily_bill_chart(df, date_column='Date', consumption_column='Consumption', price_per_kwh=0.11)
+
+    # make folder
+    folder = prepare_output_folder()
+
+    # prepare to save graphs in folder
+    def save_plot_to_folder(fig, filename, folder):
+        filepath = os.path.join(folder, filename)
+        fig.savefig(filepath, bbox_inches='tight', dpi=300)
+        plt.close(fig)
+        print(f"Saved: {filepath}")
+
+    # Save graphs in folder
+    fig1 = plot_daily_bar_chart(df, return_fig=True)
+    save_plot_to_folder(fig1, "daily_consumption.png", folder)
+
+    fig2 = plot_cumulative_chart(df, date_column='Date', consumption_column='Consumption', return_fig=True)
+    save_plot_to_folder(fig2, "cumulative_consumption.png", folder)
+
+    fig3 = plot_daily_bill_chart(df, date_column='Date', consumption_column='Consumption', price_per_kwh=0.11, return_fig=True)
+    save_plot_to_folder(fig3, "daily_bill.png", folder)
+
+    # ZIP folder function
+    def zip_folder(folder_path, zip_name="graphs_folder.zip"):
+        with zipfile.ZipFile(zip_name, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for root, dirs, files in os.walk(folder_path):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    arcname = os.path.relpath(file_path, start=folder_path)
+                    zipf.write(file_path, arcname)
+        return zip_name
+
+    #send mail function
+    def send_email_with_zip(sender_email, sender_password, receiver_email, subject, body, folder_path):
+        zip_name = zip_folder(folder_path)
+
+        msg = EmailMessage()
+        msg['From'] = sender_email
+        msg['To'] = receiver_email
+        msg['Subject'] = subject
+        msg.set_content(body)
+
+        with open(zip_name, 'rb') as f:
+            file_data = f.read()
+            msg.add_attachment(file_data, maintype='application', subtype='zip', filename=zip_name)
+
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+            smtp.login(sender_email, sender_password)
+            smtp.send_message(msg)
+            print("✅ Email sent successfully!")
+
+        os.remove(zip_name)  # Zip dosyasını temizle
+
+    # email informaion
+    sender_email = "sender@gmail.com"
+    sender_password = "****************"  # Uygulama şifresi
+    receiver_email = "reciever@gmail.com"
+    subject = "Electricity Graphs for Last 30 Days"
+    body = "Hello, attached is the zipped folder containing the electricity graphs for the last 30 days."
+
+    # send mail
+    send_email_with_zip(sender_email, sender_password, receiver_email, subject, body, folder)
